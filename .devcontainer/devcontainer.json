@@ -1,0 +1,67 @@
+{
+  "name": "eventmodel",
+  // No docker-compose here: with no database to run alongside, a single
+  // container is all this needs. Named volumes come from "mounts" below.
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "remoteUser": "vscode",
+  "features": {
+    // Temurin JDK via SDKMAN. Sets JAVA_HOME to
+    // /usr/local/sdkman/candidates/java/current itself.
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "latest",
+      "jdkDistro": "tem"
+    },
+    // Python for ad-hoc scripting. "os-provided" uses apt (3.12 on noble)
+    // instead of compiling from source, which is much faster to build.
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "os-provided",
+      "installTools": false
+    },
+    // Needed by the github MCP server in .mcp.json, which runs as a sibling
+    // container via the host daemon's socket.
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "mounts": [
+    // Share Claude credentials with the host so this container doesn't need a
+    // separate login.
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    // Metals/Bloop state records absolute container paths and must never be
+    // shared with the host -- a Metals started on the host writes "no usable
+    // build" into the shared db and the container's Metals inherits it, then
+    // silently degrades to standalone Scala CLI with no build targets.
+    "source=eventmodel-metals,target=/workspace/.metals,type=volume",
+    "source=eventmodel-bloop,target=/workspace/.bloop,type=volume",
+    // Build caches, kept out of the container's ephemeral layer so a rebuild
+    // doesn't re-download the world.
+    "source=eventmodel-coursier,target=/home/vscode/.cache/coursier,type=volume",
+    "source=eventmodel-sbt,target=/home/vscode/.sbt,type=volume",
+    "source=eventmodel-ivy,target=/home/vscode/.ivy2,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "scalameta.metals",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  // Passed through from the WSL host so the PAT stays out of git; .mcp.json
+  // references it as ${GITHUB_PAT}.
+  "remoteEnv": {
+    "GITHUB_PAT": "${localEnv:GITHUB_PAT}"
+  },
+  // `sbt serve` runs a static server on 8000 inside the container; forwarding
+  // it lets a browser on Windows watch the rendered site reload itself.
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "rendered site",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+}

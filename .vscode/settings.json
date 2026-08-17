@@ -1,0 +1,16 @@
+{
+    "files.watcherExclude": {
+        "**/target/**": true,
+        "**/out/**": true
+    },
+    "metals.inlayHints.implicitArguments.enable": true,
+    // Import the sbt build without waiting for the "Import build" prompt --
+    // in a devcontainer the prompt is easy to miss on first open, and missing
+    // it leaves Metals with no build targets.
+    "metals.autoImportBuilds": "all",
+    // Expose this Metals instance's own MCP server over HTTP, so Claude uses
+    // the same Metals the editor drives. Do NOT also add a standalone
+    // `metals-mcp` stdio server -- two Metals on one workspace fight over
+    // .metals/metals.mv.db and tear down each other's build connection.
+    "metals.startMcpServer": true
+}
